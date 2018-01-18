@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name">RobotBT</string>
-    <string name="device_list">Device list:</string>
-    <string name="device_list_description">Bluetooth Low Energy Devices</string>
-    <string name="unknown_device">--unnamed--</string>
+    <string name="app_name">bug</string>
+    <string name="title_ble">Bluetooth LE</string>
+    <string name="title_auto">Autonomous Mode</string>
+    <string name="title_manual">Manual Mode</string>
+    <string name="title_info">Info</string>
 </resources>

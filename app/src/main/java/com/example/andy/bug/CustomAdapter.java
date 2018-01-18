@@ -1,4 +1,4 @@
-package com.example.andy.robotbt;
+package com.example.andy.bug;
 
 import android.content.Context;
 import android.util.Log;
@@ -31,7 +31,7 @@ public class CustomAdapter extends ArrayAdapter<DeviceName> implements View.OnCl
     public CustomAdapter(ArrayList<DeviceName> data, Context context) {
         super(context, R.layout.list_item, data);
         this.dataSet = data;
-        this.mContext=context;
+        this.mContext = context;
     }
 
     @Override
@@ -55,7 +55,6 @@ public class CustomAdapter extends ArrayAdapter<DeviceName> implements View.OnCl
             viewHolder.txtAddress = (TextView) convertView.findViewById(R.id.device_address);
 
             result = convertView;
-
             convertView.setTag(viewHolder);
         } else {
             viewHolder = (ViewHolder) convertView.getTag();

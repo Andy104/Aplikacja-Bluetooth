@@ -1,4 +1,4 @@
-package com.example.andy.robotbt;
+package com.example.andy.bug;
 
 import org.junit.Test;
 

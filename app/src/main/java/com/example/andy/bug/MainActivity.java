@@ -1,4 +1,4 @@
-package com.example.andy.robotbt;
+package com.example.andy.bug;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -18,11 +18,13 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.annotation.NonNull;
+import android.support.design.widget.BottomNavigationView;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -45,12 +47,38 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothGatt mGatt;
     BluetoothDevice btDevice;
 
-    private ArrayList<DeviceName> data;
+    private ArrayList<DeviceName> mData;
     private ListView listView;
-    private static CustomAdapter adapter;
-    private Button scanBtn;
-    private Button stopBtn;
-    private TextView text;
+    private CustomAdapter adapter;
+    private TextView mTextMessage1;
+    private TextView mTextMessage2;
+    private TextView mTextMessage3;
+
+    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
+            = new BottomNavigationView.OnNavigationItemSelectedListener() {
+
+        @Override
+        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+            switch (item.getItemId()) {
+                case R.id.navigation_ble:
+                    mTextMessage3.setText(R.string.title_ble);
+                    return true;
+                case R.id.navigation_auto:
+                    mTextMessage3.setText(R.string.title_auto);
+                    Intent intent = new Intent(MainActivity.this, Autonomous.class);
+                    intent.putExtra("device", BluetoothDevice.EXTRA_DEVICE);
+                    startActivityForResult(intent, 3);
+                    return true;
+                case R.id.navigation_manual:
+                    mTextMessage3.setText(R.string.title_manual);
+                    return true;
+                case R.id.navigation_info:
+                    mTextMessage3.setText(R.string.title_info);
+                    return true;
+            }
+            return false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,11 +86,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mHandler = new Handler();
-        text = (TextView) findViewById(R.id.label);
-        scanBtn = (Button) findViewById(R.id.action_scan);
-        stopBtn = (Button) findViewById(R.id.action_stop);
+        mTextMessage1 = (TextView) findViewById(R.id.message1);
+        mTextMessage2 = (TextView) findViewById(R.id.message2);
+        mTextMessage3 = (TextView) findViewById(R.id.message3);
         listView = (ListView)findViewById(R.id.list);
-        Log.d(TAG, "onCreate start");
+        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
+        navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
+        Log.d(TAG, "onCreate started");
 
         if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
             Toast.makeText(this, "BLE Not Supported",
@@ -73,9 +103,7 @@ public class MainActivity extends AppCompatActivity {
         mBluetoothAdapter = bluetoothManager.getAdapter();
         Log.d(TAG, "onCreate -> BLE supported, BluetoothAdapter created");
 
-        data = new ArrayList<>();
-        data.add(new DeviceName("Device1", "12:23:34:45:56", 0));
-        data.add(new DeviceName("Device2", "12:23:34:45:56", 1));
+        mData = new ArrayList<>();  //nowa lista bez wartości
 
         if (mBluetoothAdapter == null || !mBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
@@ -89,13 +117,13 @@ public class MainActivity extends AppCompatActivity {
             scanLeDevice(true);
         }
 
-        adapter = new CustomAdapter(data, getApplicationContext());
+        adapter = new CustomAdapter(mData, getApplicationContext());
         listView.setAdapter(adapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-                DeviceName dataModel= data.get(position);
+                DeviceName dataModel = mData.get(position);
                 Toast.makeText(getApplicationContext(), dataModel.getName(), Toast.LENGTH_SHORT).show();
 
                 if (mGatt == null) {
@@ -103,46 +131,22 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     mGatt.connect();
                 }
+                mTextMessage1.setText("Selected device: " + btDevice.getName());
+                mTextMessage2.setText("Address: " + btDevice.getAddress());
             }
         });
-
-        scanBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                Toast.makeText(getApplicationContext(), "Scan Btn", Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "Scan Btn");
-            }
-        });
-
-        stopBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-
-                //Toast.makeText(getApplicationContext(), "Stop Btn", Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "Stop Btn");
-
-                Toast.makeText(getApplicationContext(), mGatt.getDevice().getName(), Toast.LENGTH_SHORT).show();
-                mGatt.disconnect();
-                //text.setText(mGatt.getConnectionState(btDevice));
-            }
-        });
-
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        Log.d(TAG, "onResume");
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        mLEScanner.stopScan(mScanCallback);
-        mGatt.disconnect();
+        if (mLEScanner != null){
+            mLEScanner.stopScan(mScanCallback);
+        }
+        if (mGatt != null) {
+            mGatt.disconnect();
+        }
     }
 
     private void scanLeDevice(final boolean enable) {
@@ -164,23 +168,18 @@ public class MainActivity extends AppCompatActivity {
         public void onScanResult(int callbackType, ScanResult result) {
             Log.i("callbackType", String.valueOf(callbackType));
             Log.i("result", result.toString());
+
             btDevice = result.getDevice();
-
-            String name = btDevice.getName();
-            String addr = btDevice.getAddress();
-            text.setText(result.getDevice().getName());
-
-            data.add(new DeviceName(btDevice.getName(), btDevice.getAddress(), 100));
+            mData.add(new DeviceName(btDevice.getName(), btDevice.getAddress()));
+            adapter.notifyDataSetChanged();
         }
 
         @Override
         public void onBatchScanResults(List<ScanResult> results) {
-            int i = 0;
             for (ScanResult sr : results) {
-                data.add(new DeviceName(sr.getDevice().getName(), sr.getDevice().getAddress(), i));
-
-                Log.i("ScanResult - Results", sr.toString());
-                i++;
+                mData.add(new DeviceName(sr.getDevice().getName(), sr.getDevice().getAddress()));
+                adapter.notifyDataSetChanged();
+                Log.d("ScanResult - Results", sr.toString());
             }
         }
 
@@ -194,15 +193,20 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
             Log.i("onConnectionStateChange", "Status: " + status);
+            //TextView text = (TextView) findViewById(R.id.message3);
+
             switch (newState) {
                 case BluetoothProfile.STATE_CONNECTED:
                     Log.i("gattCallback", "STATE_CONNECTED");
+                    //mTextMessage3.setText("Status: CONNECTED");
                     gatt.discoverServices();
                     break;
                 case BluetoothProfile.STATE_DISCONNECTED:
                     Log.e("gattCallback", "STATE_DISCONNECTED");
+                    //text.setText("Status: DISCONNECTED (" + status + ")");
                     break;
                 default:
+                    //text.setText("Status: OTHER (" + status + ")");
                     Log.e("gattCallback", "STATE_OTHER");
             }
         }
