@@ -1,7 +1,20 @@
 <resources>
-    <string name="app_name">bug</string>
+    <string name="app_name">bugAPP</string>
     <string name="title_ble">Bluetooth LE</string>
     <string name="title_auto">Autonomous Mode</string>
     <string name="title_manual">Manual Mode</string>
     <string name="title_info">Info</string>
+    <string name="title_hello">Witaj na pokładzie kapitanie</string>
+    <string name="no_device">Brak połączonego urządzenia</string>
+    <string name="btn_up">UP</string>
+    <string name="btn_down">DOWN</string>
+    <string name="btn_left">LEFT</string>
+    <string name="btn_right">RIGHT</string>
+    <string name="btn_pwr">POWER</string>
+    <string name="power_label">Power:</string>
+    <string name="save_label">Save:</string>
+    <string name="logo">LOGO</string>
+    <string name="credits_version">v1.0.0.0.0.991</string>
+    <string name="credits">Welcome to out application for bug-robots.
+        It is our honor to allow you to control stupid robot.</string>
 </resources>

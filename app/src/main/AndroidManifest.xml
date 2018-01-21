@@ -22,7 +22,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".Autonomous"></activity>
+        <activity android:name=".Manual"></activity>
     </application>
 
 </manifest>

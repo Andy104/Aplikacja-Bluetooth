@@ -4,4 +4,6 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
     <color name="textColor">#484848</color>
+    <color name="tint_power_off">#f54242</color>
+    <color name="tint_power_on">#48f542</color>
 </resources>
