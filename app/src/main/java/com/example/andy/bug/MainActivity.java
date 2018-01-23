@@ -17,7 +17,6 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.nfc.Tag;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -35,7 +34,6 @@ import android.widget.Toast;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -70,20 +68,29 @@ public class MainActivity extends AppCompatActivity {
     public static final String UUID_SERVICE_NORDIC_UART = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     public static final String UUID_CHARACTERISTIC_UART_RX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
     public static final String UUID_CHARACTERISTIC_UART_TX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+    public static final String UUID_DESCRIPTOR_UART_RX_1 = "00002902-0000-1000-8000-00805f9b34fb";
+    public static final String UUID_DESCRIPTOR_UART_RX_2 = "00002901-0000-1000-8000-00805f9b34fb";
 
     private static final int REQUEST_ENABLE_BT = 1;
     private static final int SCAN_PERIOD = 200;
 
+    // UI
     private static final int MODE_BLE = 0;
     private static final int MODE_AUTO = 1;
     private static final int MODE_MANUAL = 2;
     private static final int MODE_INFO = 3;
-    private static final int POWER_OFF = 4;
-    private static final int POWER_ON = 5;
+
+    // MODES
+    private static final int AUTO = 4;
+    private static final int MANUAL = 5;
 
     private int currentState;
-    private int currentPower;
+    private int currentMode;
     private boolean connected;
+    private boolean isReadable;
+    private boolean isNorifiable;
+    private boolean isIndicated;
+    private boolean isPermission;
     private String deviceID;
 
     private BluetoothAdapter mBluetoothAdapter;
@@ -95,12 +102,12 @@ public class MainActivity extends AppCompatActivity {
     private BluetoothGattService mUartService;
     private BluetoothGattCharacteristic mRx;
     private BluetoothGattCharacteristic mTx;
-    private BluetoothGattDescriptor descriptor;
+    private BluetoothGattDescriptor mDescriptor;
     private BluetoothManager bluetoothManager;
     BluetoothDevice btDevice;
 
-    private ImageButton buttonPower;
-    private TextView powerLabel;
+    private ImageButton buttonMode;
+    private TextView modeLabel;
     private ImageButton buttonSave;
     private TextView saveLabel;
 
@@ -141,8 +148,8 @@ public class MainActivity extends AppCompatActivity {
                     mTextTitle.setVisibility(View.INVISIBLE);
                     mTextVersion.setVisibility(View.INVISIBLE);
                     mTextCredits.setVisibility(View.INVISIBLE);
-                    buttonPower.setVisibility(View.INVISIBLE);
-                    powerLabel.setVisibility(View.INVISIBLE);
+                    buttonMode.setVisibility(View.INVISIBLE);
+                    modeLabel.setVisibility(View.INVISIBLE);
                     buttonSave.setVisibility(View.INVISIBLE);
                     saveLabel.setVisibility(View.INVISIBLE);
 
@@ -172,8 +179,8 @@ public class MainActivity extends AppCompatActivity {
                     mTextTitle.setVisibility(View.INVISIBLE);
                     mTextVersion.setVisibility(View.INVISIBLE);
                     mTextCredits.setVisibility(View.INVISIBLE);
-                    buttonPower.setVisibility(View.VISIBLE);
-                    powerLabel.setVisibility(View.VISIBLE);
+                    buttonMode.setVisibility(View.VISIBLE);
+                    modeLabel.setVisibility(View.VISIBLE);
                     buttonSave.setVisibility(View.VISIBLE);
                     saveLabel.setVisibility(View.VISIBLE);
 
@@ -191,12 +198,13 @@ public class MainActivity extends AppCompatActivity {
                     mTextTitle.setVisibility(View.INVISIBLE);
                     mTextVersion.setVisibility(View.INVISIBLE);
                     mTextCredits.setVisibility(View.INVISIBLE);
-                    buttonPower.setVisibility(View.VISIBLE);
-                    powerLabel.setVisibility(View.VISIBLE);
+                    buttonMode.setVisibility(View.INVISIBLE);
+                    modeLabel.setVisibility(View.INVISIBLE);
                     buttonSave.setVisibility(View.VISIBLE);
                     saveLabel.setVisibility(View.VISIBLE);
 
                     currentState = MODE_MANUAL;
+                    writeMessage("OFF");
                     return true;
                 case R.id.navigation_info:
                     mText1.setVisibility(View.INVISIBLE);
@@ -210,8 +218,8 @@ public class MainActivity extends AppCompatActivity {
                     mTextTitle.setVisibility(View.VISIBLE);
                     mTextVersion.setVisibility(View.VISIBLE);
                     mTextCredits.setVisibility(View.VISIBLE);
-                    buttonPower.setVisibility(View.INVISIBLE);
-                    powerLabel.setVisibility(View.INVISIBLE);
+                    buttonMode.setVisibility(View.INVISIBLE);
+                    modeLabel.setVisibility(View.INVISIBLE);
                     buttonSave.setVisibility(View.INVISIBLE);
                     saveLabel.setVisibility(View.INVISIBLE);
 
@@ -228,8 +236,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         mHandler = new Handler();
-        buttonPower = findViewById(R.id.btnPower);
-        powerLabel = findViewById(R.id.labelPower);
+        buttonMode = findViewById(R.id.btnMode);
+        modeLabel = findViewById(R.id.labelMode);
         buttonSave = findViewById(R.id.btnSave);
         saveLabel = findViewById(R.id.labelSave);
 
@@ -255,7 +263,7 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onCreate started");
 
         currentState = MODE_BLE;
-        currentPower = POWER_OFF;
+        currentMode = MANUAL;
         connected = false;
         mData = new ArrayList<>();  //nowa lista bez wartości
         navigation.setSelectedItemId(R.id.navigation_ble);
@@ -405,94 +413,129 @@ public class MainActivity extends AppCompatActivity {
                 mTx = mUartService.getCharacteristic(UUID.fromString(UUID_CHARACTERISTIC_UART_TX));
                 mRx = mUartService.getCharacteristic(UUID.fromString(UUID_CHARACTERISTIC_UART_RX));
             }
+
+            if (mRx != null) {
+                final int properties = mRx.getProperties();
+                final int permissions = mRx.getPermissions();
+                if ((properties & BluetoothGattCharacteristic.PROPERTY_READ) != 0) {
+                    isReadable = true;
+                }
+                if ((properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) {
+                    isIndicated = true;
+                }
+                if ((properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) {
+                    isNorifiable = true;
+                }
+                if ((permissions & BluetoothGattCharacteristic.PERMISSION_READ) != 0) {
+                    isPermission = true;
+                }
+
+                mDescriptor = mRx.getDescriptor(UUID.fromString(UUID_DESCRIPTOR_UART_RX_1));
+                if (mDescriptor != null) {
+                    mDescriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                    mGatt.writeDescriptor(mDescriptor);
+
+                    Log.d("onServicesDiscovered", "mDescriptor notified");
+                } else {
+                    Log.e("onServicesDiscovered", "mDescriptor is NULL");
+                }
+            } else {
+                Log.e(TAG, "mRx is null");
+            }
+        }
+
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            BluetoothGattCharacteristic mRecieve = gatt.getService(UUID.fromString(UUID_SERVICE_NORDIC_UART)).getCharacteristic(UUID.fromString(UUID_CHARACTERISTIC_UART_RX));
+            gatt.readCharacteristic(mRecieve);
+
+            Log.d("onDescriptorWrite", "write: mDescroptor");
+        }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            super.onCharacteristicChanged(gatt, characteristic);
+            byte[] data = characteristic.getValue();
+            Log.d("onCharacteristicChanged", String.valueOf(data[0]));
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
-            super.onCharacteristicRead(gatt, characteristic, status);
+            Log.d("onCharacteristicRead", "qwtyuiocvbxnk");
+            /*
+            if(status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d("onCharacteristicRead", "gatt success");
+                gatt.readCharacteristic(characteristic);
+            }
+            //Log.d("onCharacteristicRead", "start reading");
+            //gatt.readCharacteristic(characteristic);
 
             Log.d("onCharacteristicRead", characteristic.getValue().toString());
-            //gatt.disconnect();
+            */
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             super.onCharacteristicWrite(gatt, characteristic, status);
-        }
 
-        @Override
-        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-            Log.d("onCharacteristicChanged", String.valueOf(characteristic.getValue()));
+            Log.d("onCharacteristicWrite", String.valueOf(characteristic.getValue()));
         }
     };
 
+    public void readMessage() {
+        if (mGatt.readCharacteristic(mRx)) {
+            byte[] data = mRx.getValue();
+            Log.d("readMessage", String.valueOf(data[0]));
+        }
+    }
+
     public void writeMessage(String str) {
-        String value1 = "4";
-        byte[] value = value1.getBytes(Charset.forName("UTF-8"));
+        byte[] value = str.getBytes(Charset.forName("UTF-8"));
 
         if (mTx != null) {
             mTx.setValue(value);
             mGatt.writeCharacteristic(mTx);
 
-            Log.d(TAG, "UART BLE Tx: " + value[0]);
+            for (int i=0; i<value.length; i++) {
+                Log.d(TAG, "write: characteristic found: " + value[i]);
+            }
         } else {
             Log.d(TAG, "UART BLE characteristic Tx NOT found ");
-        }
-
-        /*
-        byte[] value = str.getBytes(Charset.forName("UTF-8"));
-        byte[] chunk = null;
-
-        mUartService = mGatt.getService(UUID.fromString(UUID_SERVICE_NORDIC_UART));
-        if (mUartService != null) {
-            for (int i = 0; i < value.length; i += 20) {
-                chunk = Arrays.copyOfRange(value, i, Math.min(i + 20, value.length));
-                mTx = mUartService.getCharacteristic(UUID.fromString(UUID_CHARACTERISTIC_UART_TX));
-                if (mTx != null) {
-                    mTx.setValue(chunk);
-                    mTx.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                } else {
-                    Log.d(TAG, "UART BLE characteristic Tx NOT found ");
-                }
-            }
-            Toast.makeText(getApplicationContext(), "Send: " + str, Toast.LENGTH_SHORT).show();
-        } else {
-            Log.d(TAG, "UART BLE service NOT found ");
-        }
-        */
-    }
-
-    public void readMesssage() {
-        String msg = null;
-
-        if (mRx != null) {
-            mGatt.readCharacteristic(mRx);
-        } else {
-            Log.d(TAG, "UART BLE characteristic Rx NOT found ");
         }
     }
 
     public void moveUp(View view) {
-        String str = "Hello";
-        writeMessage(str);
+        readMessage();
+        //String str = "1";
+        //writeMessage(str);
     }
 
     public void moveDown(View view) {
+        String str = "2";
+        writeMessage(str);
     }
 
     public void moveLeft(View view) {
+        String str = "3";
+        writeMessage(str);
     }
 
     public void moveRight(View view) {
+        String str = "4";
+        writeMessage(str);
     }
 
-    public void changePwr(View view) {
-        if (currentPower == POWER_OFF) {
-            currentPower = POWER_ON;
-            buttonPower.setImageResource(R.drawable.ic_power_on);
-        } else if (currentPower == POWER_ON) {
-            currentPower = POWER_OFF;
-            buttonPower.setImageResource(R.drawable.ic_power_off);
+    public void changeMode(View view) {
+        if (currentMode == MANUAL) {
+            String str = "5";
+            writeMessage(str);
+            currentMode = AUTO;
+            buttonMode.setImageResource(R.drawable.ic_power_on);
+        } else if (currentMode == AUTO) {
+            String str = "6";
+            writeMessage(str);
+            currentMode = MANUAL;
+            buttonMode.setImageResource(R.drawable.ic_power_off);
         }
     }
 

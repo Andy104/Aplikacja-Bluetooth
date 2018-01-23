@@ -10,8 +10,8 @@
     <string name="btn_down">DOWN</string>
     <string name="btn_left">LEFT</string>
     <string name="btn_right">RIGHT</string>
-    <string name="btn_pwr">POWER</string>
-    <string name="power_label">Power:</string>
+    <string name="btn_mode">AUTO</string>
+    <string name="mode_label">Auto:</string>
     <string name="save_label">Save:</string>
     <string name="logo">LOGO</string>
     <string name="credits_version">v1.0.0.0.0.991</string>

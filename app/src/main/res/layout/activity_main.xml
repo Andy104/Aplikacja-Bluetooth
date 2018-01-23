@@ -52,25 +52,25 @@
         android:textColor="@color/textColor" />
 
     <ImageButton
-        android:id="@+id/btnPower"
+        android:id="@+id/btnMode"
         android:layout_width="50dp"
         android:layout_height="50dp"
         android:layout_above="@id/navigation"
         android:layout_marginStart="20dp"
         android:layout_marginBottom="30dp"
-        android:contentDescription="@string/btn_pwr"
+        android:contentDescription="@string/btn_mode"
         android:src="@drawable/ic_power_off"
         android:visibility="invisible"
-        android:onClick="changePwr"/>
+        android:onClick="changeMode"/>
 
     <TextView
-        android:id="@+id/labelPower"
+        android:id="@+id/labelMode"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@id/btnPower"
-        android:layout_alignStart="@id/btnPower"
+        android:layout_above="@id/btnMode"
+        android:layout_alignStart="@id/btnMode"
         android:textSize="16sp"
-        android:text="@string/power_label"
+        android:text="@string/mode_label"
         android:textColor="@color/textColor"
         android:visibility="invisible" />
 
@@ -82,7 +82,7 @@
         android:layout_alignParentEnd="true"
         android:layout_marginEnd="20dp"
         android:layout_marginBottom="30dp"
-        android:contentDescription="@string/btn_pwr"
+        android:contentDescription="@string/btn_mode"
         android:src="@drawable/ic_camera"
         android:visibility="invisible"
         android:onClick="saveImage"/>
